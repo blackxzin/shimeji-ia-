@@ -1,0 +1,8 @@
+Resumo de Instalação Rápida:
+Instale o Python (com a opção PATH marcada).
+
+Instale o Tesseract OCR no Windows.
+
+No CMD, rode: pip install numpy opencv-python pillow pytesseract pyttsx3 speechrecognition groq.
+
+Coloque o código e as imagens na mesma pasta.
