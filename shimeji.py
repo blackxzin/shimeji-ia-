@@ -15,7 +15,7 @@ parser.add_argument("--modelo", type=str, default="llama-3.3-70b-versatile", hel
 parser.add_argument("--sem-voz", action="store_true", help="Desativa TTS (text-to-speech)")
 args = parser.parse_args()
 
-CHAVE_GROQ = args.api_key or "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"
+CHAVE_GROQ = args.api_key or ""
 client = Groq(api_key=CHAVE_GROQ) if CHAVE_GROQ else None
 MODELO = args.modelo
 SEM_VOZ = args.sem_voz
