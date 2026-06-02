@@ -1,0 +1,7 @@
+__pycache__/
+memoria.json
+*.pyc
+screenshot_*.png
+historico_melhorias.json
+*.backup_*
+.env
