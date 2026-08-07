@@ -48,7 +48,21 @@ Você deve ter uma chave da API da **Groq** (para o cérebro dela funcionar).
 
 1. Inicie o programa:
 ```bash
-python shimeji.py
+python3 shimeji.py
+```
+
+### Opções de linha de comando
+
+| Flag | Padrão | Descrição |
+|------|--------|-----------|
+| `--api-key CHAVE` | env `GROQ_API_KEY` ou `memoria.json` | Chave da API Groq |
+| `--modelo NOME` | `llama-3.3-70b-versatile` | Modelo Groq para texto/chat |
+| `--modelo-visao NOME` | `llama-3.2-90b-vision-preview` | Modelo Groq para visão/OCR de tela |
+| `--sem-voz` | `False` | Desativa TTS (text-to-speech) |
+
+Exemplo:
+```bash
+python3 shimeji.py --modelo-visao meta-llama/llama-4-scout-17b-16e-instruct --sem-voz
 ```
 2. Na primeira vez, clique com o botão direito na Shimeji, vá em **⚙️ Configurações** e cole sua Chave de API lá, além de definir o seu nome. (Isso ficará salvo no `memoria.json`).
 

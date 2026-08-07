@@ -26,23 +26,25 @@ ARQUIVO_MEMORIA = os.path.join(BASE_DIR, "memoria.json")
 # API key via argumento de linha de comando ou variável de ambiente
 parser = argparse.ArgumentParser(description="Shimeji - Assistente de voz evolutivo")
 parser.add_argument("--api-key", type=str, default=os.environ.get("GROQ_API_KEY", ""), help="Chave da API Groq")
-parser.add_argument("--modelo", type=str, default="llama-3.3-70b-versatile", help="Modelo Groq a usar")
+parser.add_argument("--modelo", type=str, default="llama-3.3-70b-versatile", help="Modelo Groq (texto)")
+parser.add_argument("--modelo-visao", type=str, default="llama-3.2-90b-vision-preview", help="Modelo Groq para visão")
 parser.add_argument("--sem-voz", action="store_true", help="Desativa TTS (text-to-speech)")
 args = parser.parse_args()
 
 MODELO = args.modelo
+MODELO_VISAO = args.modelo_visao
 SEM_VOZ = args.sem_voz
 
 if not os.path.exists(PASTA_HABILIDADES):
     os.makedirs(PASTA_HABILIDADES)
 
 # --- Regex de comandos de voz ---
-CMD_ABRIR = r'(?:abre?|abra|m?abrir)\s+(.+)'
+CMD_ABRIR = r'(?:abre|abra|abrir)\s+(.+)'
 CMD_PESQUISAR = r'(?:pesquisa|pesquise|busca|busque|procure|procura|search)\s+(.+)'
 CMD_FECHAR = r'(?:fecha|feche|fechar|mate|matar|encerra|encerre)\s+(.+)'
-CMD_TELA = r'(?:olha?\s+(na)?\s*tela|ve|veja|olha?\s+isso|o\s+que\s+tem\s+na\s+tela|o\s+que\s+voc[eê]\s+ve|screenshot|captura)'
-CMD_STATUS = r'(?:status|informa[cç][aã]o|sistema|hardware|cpu|mem[oó]ria|bateria|disco)'
-CMD_HABILIDADES = r'(?:o\s+que\s+voc[eê]\s+sabe|habilidades|lista|comandos|fazer|capaz|pode\s+fazer)'
+CMD_TELA = r'(?:olha?\s+(?:na\s+)?tela|\bveja\b|olha\s+isso|o\s+que\s+tem\s+na\s+tela|o\s+que\s+voc[eê]\s+v[êe]\b|\bscreenshot\b|captura(?:r)?\s+(?:a\s+)?tela)'
+CMD_STATUS = r'\b(?:status|informa[cç][oõ]es?|sistema|hardware|cpu|mem[oó]ria|bateria|disco)\b'
+CMD_HABILIDADES = r'(?:o\s+que\s+voc[eê]\s+(?:sabe|pode|consegue)\s+fazer|habilidades|quais?\s+comandos|lista\s+de\s+comandos)'
 CMD_VOLUME = r'(?:volume)\s*(?:para|em|no|para\s*o)?\s*(\d{1,3})?'
 CMD_MELHORAR = r'(?:melhora|melhore|melhorar|evolua|evoluir|upgrade|atualiza|atualize)\s*(.+)?'
 CMD_LER_TELA = r'(?:leia?\s+(o\s+que\s+est[aá]\s+)?(na|no)\s+tela|ocr|leia?\s+(a)?\s*tela)'
@@ -53,10 +55,10 @@ CMD_PIADA = r'(?:piada|conta\s+uma?\s+piada|me\s+faz\s+rir|joke|humor|engraçad[
 CMD_HORA = r'(?:que\s+horas?\s+s[aã]o|hora|hor[aá]rio|que\s+dia|data\s+de\s+hoje|data|calend[aá]rio)'
 CMD_CALCULAR = r'(?:calcula|calcule|quanto\s+[eé]|quanto\s+d[aá]|soma|some|multiplica|divid[ae])\s+(.+)'
 CMD_ALARME = r'(?:alarme|timer|temporizador|me\s+avisa|me\s+lembra)\s+(?:em|de|daqui|para)?\s*(\d+)\s*(minuto|segundo|hora|min|seg|hr)s?'
-CMD_CLIMA = r'(?:clima|tempo|temperatura|previs[aã]o|vai\s+chover|est[aá]\s+frio|est[aá]\s+calor)\s*(?:em|de|no|na)?\s*(.*)?'
+CMD_CLIMA = r'\b(?:clima|tempo|temperatura|previs[aã]o|vai\s+chover|est[aá]\s+frio|est[aá]\s+calor)\b\s*(?:em|de|no|na)?\s*(.*)?'
 
 # Saudações para detectar interação
-CMD_SAUDACAO = r'^(oi|ola|ol[aá]|hey|bom dia|boa tarde|boa noite|eai|e ai|fala|salve|opa)'
+CMD_SAUDACAO = r'^(oi|ola|ol[aá]|hey|bom dia|boa tarde|boa noite|eai|e ai|fala|salve|opa)\b'
 
 
 def _carregar_chave_groq():
@@ -96,7 +98,16 @@ class ShimejiCore:
 
             self.cor_fundo = "#00ff00"
             self.root.config(bg=self.cor_fundo)
-            self.root.attributes("-transparentcolor", self.cor_fundo)
+            # Transparência: -transparentcolor só existe no Windows
+            try:
+                self.root.attributes("-transparentcolor", self.cor_fundo)
+            except tk.TclError:
+                # Linux/macOS: usar -alpha para semi-transparência ou ignorar
+                # A janela terá fundo verde visível, mas funciona
+                try:
+                    self.root.attributes("-alpha", 0.95)
+                except tk.TclError:
+                    pass
 
             # Posição central
             sw = self.root.winfo_screenwidth()
@@ -377,46 +388,6 @@ class ShimejiCore:
             self.ganhar_xp(1)
             return
 
-        # Hora e Data
-        if re.search(CMD_HORA, txt):
-            self.dizer_hora()
-            return
-
-        # Alarme / Timer
-        m = re.match(CMD_ALARME, txt)
-        if m:
-            self.criar_alarme(m.group(1), m.group(2))
-            return
-
-        # Notas / Lembretes
-        m = re.match(CMD_NOTA, txt)
-        if m:
-            self.anotar(m.group(1).strip())
-            return
-
-        # Ler notas
-        if re.search(r'(?:minhas?\s+notas?|o\s+que\s+anotei|lembretes?|meus?\s+lembretes?)', txt):
-            self.ler_notas()
-            return
-
-        # Piada
-        if re.search(CMD_PIADA, txt):
-            self.contar_piada()
-            return
-
-        # Calcular
-        m = re.match(CMD_CALCULAR, txt)
-        if m:
-            self.calcular(m.group(1).strip())
-            return
-
-        # Clima
-        m = re.search(CMD_CLIMA, txt)
-        if m:
-            cidade = (m.group(1) or "").strip()
-            self.consultar_clima(cidade)
-            return
-
         # Abrir programas/sites
         m = re.match(CMD_ABRIR, txt)
         if m:
@@ -440,6 +411,46 @@ class ShimejiCore:
         if m:
             alvo = m.group(1).strip()
             self.fechar_processo(alvo)
+            return
+
+        # Hora e Data
+        if re.search(CMD_HORA, txt):
+            self.dizer_hora()
+            return
+
+        # Alarme / Timer
+        m = re.match(CMD_ALARME, txt)
+        if m:
+            self.criar_alarme(m.group(1), m.group(2))
+            return
+
+        # Notas / Lembretes
+        m = re.match(CMD_NOTA, txt)
+        if m:
+            self.anotar(m.group(1).strip())
+            return
+
+        # Ler notas
+        if re.search(r'(?:minhas?\s+notas?|o\s+que\s+anotei|meus?\s+(?:lembretes?|notas?))', txt):
+            self.ler_notas()
+            return
+
+        # Piada
+        if re.search(CMD_PIADA, txt):
+            self.contar_piada()
+            return
+
+        # Calcular
+        m = re.match(CMD_CALCULAR, txt)
+        if m:
+            self.calcular(m.group(1).strip())
+            return
+
+        # Clima
+        m = re.search(CMD_CLIMA, txt)
+        if m:
+            cidade = (m.group(1) or "").strip()
+            self.consultar_clima(cidade)
             return
 
         # Ver tela / screenshot
@@ -543,14 +554,16 @@ class ShimejiCore:
             if not self.shutdown_event.is_set():
                 self.falar(f"Alerta! Já se passaram {quantidade} {unidade_nome}!")
                 self.set_mood("brava")
-                # Animação de chacoalhar
-                orig_x = self.root.winfo_x()
-                orig_y = self.root.winfo_y()
-                for i in range(6):
-                    dx = 10 if i % 2 == 0 else -10
-                    self.root.after(i * 100, lambda d=dx: self.root.geometry(f"+{orig_x + d}+{orig_y}"))
-                self.root.after(700, lambda: self.root.geometry(f"+{orig_x}+{orig_y}"))
-                self.root.after(4000, lambda: self.set_mood("normal"))
+                # Animação de chacoalhar (tudo no thread principal)
+                def _shake():
+                    orig_x = self.root.winfo_x()
+                    orig_y = self.root.winfo_y()
+                    for i in range(6):
+                        dx = 10 if i % 2 == 0 else -10
+                        self.root.after(i * 100, lambda d=dx: self.root.geometry(f"+{orig_x + d}+{orig_y}"))
+                    self.root.after(700, lambda: self.root.geometry(f"+{orig_x}+{orig_y}"))
+                    self.root.after(4000, lambda: self.set_mood("normal"))
+                self.root.after(0, _shake)
 
         t = threading.Thread(target=_alarme, daemon=True)
         t.start()
@@ -700,7 +713,12 @@ class ShimejiCore:
 
         # Tentar abrir como arquivo/exe
         try:
-            os.startfile(alvo)
+            if sys.platform == "win32":
+                os.startfile(alvo)
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", alvo])
+            else:
+                subprocess.Popen(["xdg-open", alvo])
             self.ganhar_xp(5)
             return
         except Exception:
@@ -749,24 +767,39 @@ class ShimejiCore:
             self.set_mood("triste")
 
     def ajustar_volume(self, nivel):
-        """Ajusta volume real via PowerShell no Windows."""
+        """Ajusta volume real — suporta Linux (pactl/amixer) e Windows (PowerShell)."""
         try:
             vol = max(0, min(100, int(nivel))) if nivel else 50
-            vol_hex = int(vol / 100 * 0xFFFF)
-            ps_code = (
-                'Add-Type -TypeDefinition @"\n'
-                'using System;\n'
-                'using System.Runtime.InteropServices;\n'
-                'public class Audio {\n'
-                '  [DllImport("winmm.dll")] public static extern int waveOutSetVolume(IntPtr h, uint d);\n'
-                '}\n'
-                '"@;\n'
-                f'[Audio]::waveOutSetVolume([IntPtr]::Zero, 0x{vol_hex:04X}{vol_hex:04X})'
-            )
-            subprocess.Popen(
-                ["powershell", "-NoProfile", "-Command", ps_code],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
+
+            if sys.platform == "win32":
+                vol_hex = int(vol / 100 * 0xFFFF)
+                ps_code = (
+                    'Add-Type -TypeDefinition @"\n'
+                    'using System;\n'
+                    'using System.Runtime.InteropServices;\n'
+                    'public class Audio {\n'
+                    '  [DllImport("winmm.dll")] public static extern int waveOutSetVolume(IntPtr h, uint d);\n'
+                    '}\n'
+                    '"@;\n'
+                    f'[Audio]::waveOutSetVolume([IntPtr]::Zero, 0x{vol_hex:04X}{vol_hex:04X})'
+                )
+                subprocess.Popen(
+                    ["powershell", "-NoProfile", "-Command", ps_code],
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
+            else:
+                # Linux: tentar pactl (PulseAudio/PipeWire) primeiro, depois amixer (ALSA)
+                try:
+                    subprocess.run(
+                        ["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{vol}%"],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True
+                    )
+                except (FileNotFoundError, subprocess.CalledProcessError):
+                    subprocess.run(
+                        ["amixer", "set", "Master", f"{vol}%"],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                    )
+
             self.falar(f"Volume ajustado para {vol}%.")
             self.ganhar_xp(3)
         except Exception as e:
@@ -777,7 +810,8 @@ class ShimejiCore:
         self.set_mood("feliz")
         cpu = psutil.cpu_percent(interval=1)
         ram = psutil.virtual_memory()
-        disco = psutil.disk_usage('C:\\')
+        disco_path = 'C:\\' if sys.platform == 'win32' else '/'
+        disco = psutil.disk_usage(disco_path)
         bateria = psutil.sensors_battery()
         rede = psutil.net_io_counters()
         nivel = self.ganhar_xp(0)
@@ -847,7 +881,7 @@ class ShimejiCore:
         # Tentar via Groq vision
         try:
             chat = client.chat.completions.create(
-                model="llama-3.2-90b-vision-preview",
+                model=MODELO_VISAO,
                 messages=[
                     {"role": "system", "content": "Você é um assistente visual. Descreva em português o que vê na imagem de forma detalhada e útil."},
                     {"role": "user", "content": [
@@ -877,7 +911,7 @@ class ShimejiCore:
             return
         try:
             chat = client.chat.completions.create(
-                model="llama-3.2-90b-vision-preview",
+                model=MODELO_VISAO,
                 messages=[
                     {"role": "system", "content": "Extraia todo o texto visível nesta imagem de tela. Liste o texto encontrado."},
                     {"role": "user", "content": [
@@ -1233,12 +1267,14 @@ class ShimejiCore:
                 self._agendar_movimento()
 
     def _agendar_movimento(self):
-        """Calcula posição e agenda o movimento no thread principal."""
-        sw = self.root.winfo_screenwidth()
-        sh = self.root.winfo_screenheight()
-        nx = random.randint(50, max(51, sw - 200))
-        ny = random.randint(50, max(51, sh - 200))
-        self.root.after(0, lambda x=nx, y=ny: self.root.geometry(f"+{x}+{y}"))
+        """Agenda no thread principal a leitura das dimensões e o movimento."""
+        def _move():
+            sw = self.root.winfo_screenwidth()
+            sh = self.root.winfo_screenheight()
+            nx = random.randint(50, max(51, sw - 200))
+            ny = random.randint(50, max(51, sh - 200))
+            self.root.geometry(f"+{nx}+{ny}")
+        self.root.after(0, _move)
 
     def monitor_sistema(self):
         """Monitora sistema e alerta sobre problemas."""
@@ -1267,9 +1303,10 @@ class ShimejiCore:
 
             # Alerta de disco quase cheio
             try:
-                disco = psutil.disk_usage('C:\\')
+                disco_path = 'C:\\' if sys.platform == 'win32' else '/'
+                disco = psutil.disk_usage(disco_path)
                 if disco.percent > 95 and not alertado_disco:
-                    self.falar(f"Atenção! Disco C quase cheio: {disco.percent}%!")
+                    self.falar(f"Atenção! Disco quase cheio: {disco.percent}%!")
                     self.set_mood("brava")
                     alertado_disco = True
                 elif disco.percent < 90:

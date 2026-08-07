@@ -1,8 +1,9 @@
 {
   "nome": "mestre",
   "afeto": 15,
-  "xp": 6,
+  "xp": 8,
   "habilidades_desbloqueadas": [],
   "preferencias": [],
-  "historico": []
+  "historico": [],
+  "notas": []
 }

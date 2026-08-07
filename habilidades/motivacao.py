@@ -14,10 +14,12 @@ def executar(shimeji=None):
     if shimeji is not None:
         shimeji.set_mood("feliz")
         shimeji.falar(random.choice(FRASES))
-        # Pequena animação
-        orig_y = shimeji.root.winfo_y()
-        shimeji.root.geometry(f"+{shimeji.root.winfo_x()}+{orig_y - 15}")
-        shimeji.root.after(250, lambda: shimeji.root.geometry(f"+{shimeji.root.winfo_x()}+{orig_y}"))
+        # Animação segura: roda no thread principal via .after
+        def _pulo():
+            orig_y = shimeji.root.winfo_y()
+            shimeji.root.geometry(f"+{shimeji.root.winfo_x()}+{orig_y - 15}")
+            shimeji.root.after(250, lambda: shimeji.root.geometry(f"+{shimeji.root.winfo_x()}+{orig_y}"))
+        shimeji.root.after(0, _pulo)
         shimeji.ganhar_xp(2)
     else:
         print(random.choice(FRASES))
