@@ -1,24 +1,28 @@
-import time
+"""Habilidade: ciclo Pomodoro de 25 minutos de foco."""
+
+import threading
+
+MINUTOS_DE_FOCO = 25
+
 
 def executar(shimeji=None):
-    """Inicia um timer Pomodoro de 25 minutos."""
-    if shimeji is not None:
-        shimeji.set_mood("feliz")
-        shimeji.falar("Modo Pomodoro ativado! Foco total por 25 minutos. Eu aviso quando acabar!")
-        shimeji.ganhar_xp(5)
+    if shimeji is None:
+        print(f"Pomodoro de {MINUTOS_DE_FOCO} minutos iniciado.")
+        return
 
-    # 25 minutos em segundos
-    time.sleep(25 * 60)
+    shimeji.set_mood("feliz")
+    shimeji.falar(f"Pomodoro ativado. Foco total por {MINUTOS_DE_FOCO} minutos; eu te aviso no fim.")
+    shimeji.ganhar_xp(5)
 
-    if shimeji is not None:
+    def concluir():
+        # `parar_evento` é sinalizado no encerramento: não fale com a janela fechada.
+        if shimeji.parar_evento.is_set():
+            return
         shimeji.set_mood("feliz")
-        shimeji.falar("Pomodoro concluído! Parabéns pelo foco. Hora de fazer uma pausa de 5 minutos!")
-        # Animação segura: roda no thread principal via .after
-        def _pulo():
-            orig_y = shimeji.root.winfo_y()
-            shimeji.root.geometry(f"+{shimeji.root.winfo_x()}+{orig_y - 20}")
-            shimeji.root.after(300, lambda: shimeji.root.geometry(f"+{shimeji.root.winfo_x()}+{orig_y}"))
-        shimeji.root.after(0, _pulo)
+        shimeji.falar("Pomodoro concluído! Parabéns pelo foco. Faz uma pausa de 5 minutos.")
+        shimeji.pular(vezes=2)
         shimeji.ganhar_xp(15)
-    else:
-        print("Pomodoro concluído!")
+
+    temporizador = threading.Timer(MINUTOS_DE_FOCO * 60, concluir)
+    temporizador.daemon = True
+    temporizador.start()

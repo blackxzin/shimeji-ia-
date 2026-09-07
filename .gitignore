@@ -1,8 +1,21 @@
 __pycache__/
+*.py[cod]
 venv/
+.venv/
+*.egg-info/
+build/
+dist/
+
+# Estado local: contém a chave da API Groq
 memoria.json
-*.pyc
+
+# Artefatos gerados em execução
 screenshot_*.png
-historico_melhorias.json
+historico_melhorias.jsonl
 *.backup_*
+
+# Ambiente
 .env
+.pytest_cache/
+.coverage
+htmlcov/
