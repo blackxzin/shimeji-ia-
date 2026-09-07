@@ -9,7 +9,7 @@
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-3776ab?style=flat-square&logo=python&logoColor=white">
   <img alt="Tkinter" src="https://img.shields.io/badge/UI-Tkinter-ff6f61?style=flat-square">
   <img alt="Groq" src="https://img.shields.io/badge/IA-Groq%20Llama%203.3-f55036?style=flat-square">
-  <img alt="Testes" src="https://img.shields.io/badge/testes-332%20passando-2e5bff?style=flat-square">
+  <img alt="Testes" src="https://img.shields.io/badge/testes-338%20passando-2e5bff?style=flat-square">
   <img alt="Cobertura" src="https://img.shields.io/badge/cobertura-89%25-0b7a48?style=flat-square">
   <img alt="Licença" src="https://img.shields.io/badge/licen%C3%A7a-MIT-000000?style=flat-square">
 </p>
@@ -307,7 +307,7 @@ por `comandos.py` antes de chegar em `sistema.py`, e ali nada é interpretado po
 
 ```bash
 pip install -r requirements-dev.txt
-python3 -m pytest                              # 332 testes
+python3 -m pytest                              # 338 testes
 python3 -m pytest --cov=shimeji --cov-report=term-missing
 ```
 
@@ -324,7 +324,7 @@ Os testes de interface precisam de sessão gráfica e são pulados sem ela. Em C
 | `ui.py` | 91% |
 | `sistema.py` | 87% |
 | `calculadora.py` | 86% |
-| `app.py` | 83% |
+| `app.py` | 84% |
 | **Total** | **89%** |
 
 Os scripts de `scripts/` regeneram as imagens deste README a partir da aplicação real:

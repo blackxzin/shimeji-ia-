@@ -696,23 +696,3 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     aplicacao.executar()
     return 0
-
-
-    def cache(self):
-        """Método gerado automaticamente pela auto-evolução."""
-        self.cache = {}
-
-
-    def cache(self):
-        """Método gerado automaticamente pela auto-evolução."""
-        self.cache = {}
-
-
-    def cache(self):
-        """Método gerado automaticamente pela auto-evolução."""
-        self.cache = {}
-
-
-    def cache(self):
-        """Método gerado automaticamente pela auto-evolução."""
-        self.cache = {}

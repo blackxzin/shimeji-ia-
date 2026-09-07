@@ -547,9 +547,19 @@ def test_melhoria_aplicada_quando_permitida(app, monkeypatch, tmp_path):
     assert any("nova_funcao" in fala for fala in app.falas)
 
 
-def test_propor_melhoria_com_permissao_consulta_a_ia(app, monkeypatch, cliente_falso):
+def test_propor_melhoria_com_permissao_consulta_a_ia(app, monkeypatch, cliente_falso, tmp_path):
+    """A melhoria é redirecionada para um arquivo temporário.
+
+    Sem isso o teste reescreveria o `shimeji/app.py` do repositório de verdade:
+    a auto-evolução aponta para o próprio módulo por construção.
+    """
+    from shimeji import evolucao
     from shimeji.config import Config
     from shimeji.ia import CerebroIA
+
+    aplicadas = []
+    monkeypatch.setattr(evolucao, "aplicar_melhoria",
+                        lambda caminho, nome, cmd, permitido: aplicadas.append(nome) or nome)
 
     app.config = Config(sem_voz=True, permitir_auto_modificacao=True)
     cliente = cliente_falso(["[MELHORAR] cache | self.cache = {}"])
@@ -557,6 +567,17 @@ def test_propor_melhoria_com_permissao_consulta_a_ia(app, monkeypatch, cliente_f
 
     app._propor_melhoria("desempenho")
     assert cliente.chamadas, "a IA deveria ter sido consultada"
+    assert aplicadas == ["cache"]
+
+
+def test_nenhum_teste_modifica_o_codigo_do_repositorio():
+    """Trava de segurança: a suíte não pode deixar rastro no próprio código-fonte."""
+    import glob
+    import os
+
+    raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    assert not glob.glob(os.path.join(raiz, "shimeji", "*.backup_*"))
+    assert "auto-evolução" not in open(os.path.join(raiz, "shimeji", "app.py"), encoding="utf-8").read()
 
 
 def test_prompt_reflete_a_permissao_de_auto_modificacao(app):
